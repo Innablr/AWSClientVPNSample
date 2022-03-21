@@ -1,0 +1,107 @@
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: The ID of the VPC where the Client VPN Endpoint is to be deployed into.
+  SamlProviderArn:
+    Type: String
+    Description: ARN of the configured Google Workspace SAML identity provider
+  TlsCertificate:
+    Type: String
+    Description: ACM Certificate configured to use with the Client VPN
+  PrivateSubnet1Id:
+    Type: AWS::EC2::Subnet::Id
+    Description: ID of the private subnet 1 where access is required via the Client VPN
+  PrivateSubnet2Id:
+    Type: AWS::EC2::Subnet::Id
+    Description: ID of the private subnet 2 where access is required via the Client VPN
+  PrivateSubnet3Id:
+    Type: AWS::EC2::Subnet::Id
+    Description: ID of the private subnet 3 where access is required via the Client VPN
+  PrivateSubnet1Cidr:
+    Type: String
+    Description: CIDR block of the private subnet 1 where access is required via the Client VPN
+  PrivateSubnet2Cidr:
+    Type: String
+    Description: CIDR block of the private subnet 1 where access is required via the Client VPN
+  PrivateSubnet3Cidr:
+    Type: String
+    Description: CIDR block of the private subnet 1 where access is required via the Client VPN
+
+Resources:
+  VpnConnectionLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: ClientVpnConnectionLogs
+      RetentionInDays: 365
+
+  ClientVpnEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VpcId
+      GroupDescription: Security group for Client VPN Endpoint
+
+  ClientVpnEndpoint:
+    Type: AWS::EC2::ClientVpnEndpoint
+    Properties:
+      AuthenticationOptions:
+      - Type: "federated-authentication"
+        FederatedAuthentication: !Ref SamlProviderArn
+      ClientCidrBlock: "172.66.0.0/22"
+      ConnectionLogOptions:
+        Enabled: true
+        CloudwatchLogGroup: !Ref VpnConnectionLogs
+      Description: Client VPN Endpoint to connect via Google Workspace SAML"
+      SecurityGroupIds:
+      - !Ref ClientVpnEndpointSecurityGroup
+      ServerCertificateArn: !Ref TlsCertificate
+      SplitTunnel: true
+      TransportProtocol: "udp"
+      VpcId: !Ref VpcId
+
+  ClientVpnNetworkAssociation1:
+    Type: "AWS::EC2::ClientVpnTargetNetworkAssociation"
+    Properties:
+      ClientVpnEndpointId:
+        Ref: ClientVpnEndpoint
+      SubnetId: !Ref PrivateSubnet1Id
+
+  ClientVpnNetworkAssociation2:
+    Type: "AWS::EC2::ClientVpnTargetNetworkAssociation"
+    Properties:
+      ClientVpnEndpointId:
+        Ref: ClientVpnEndpoint
+      SubnetId: !Ref PrivateSubnet2Id
+
+  ClientVpnNetworkAssociation3:
+    Type: "AWS::EC2::ClientVpnTargetNetworkAssociation"
+    Properties:
+      ClientVpnEndpointId:
+        Ref: ClientVpnEndpoint
+      SubnetId: !Ref PrivateSubnet3Id
+
+  ClientVPNAuthorisationToPrivateSubnet1:
+    Type: AWS::EC2::ClientVpnAuthorizationRule
+    Properties:
+      ClientVpnEndpointId:
+        Ref: ClientVpnEndpoint
+      AuthorizeAllGroups: true
+      TargetNetworkCidr: !Ref PrivateSubnet1Cidr
+      Description: "Authorise traffic to Private Subnet1"
+
+  ClientVPNAuthorisationToPrivateSubnet2:
+    Type: AWS::EC2::ClientVpnAuthorizationRule
+    Properties:
+      ClientVpnEndpointId:
+        Ref: ClientVpnEndpoint
+      AuthorizeAllGroups: true
+      TargetNetworkCidr: !Ref PrivateSubnet2Cidr
+      Description: "Authorise traffic to Private Subnet2"
+
+  ClientVPNAuthorisationToPrivateSubnet3:
+    Type: AWS::EC2::ClientVpnAuthorizationRule
+    Properties:
+      ClientVpnEndpointId:
+        Ref: ClientVpnEndpoint
+      AuthorizeAllGroups: true
+      TargetNetworkCidr: !Ref PrivateSubnet3Cidr
+      Description: "Authorise traffic to Private Subnet3"
